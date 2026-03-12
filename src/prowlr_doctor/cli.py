@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 
-from prowlr_doctor import paths
+from prowlr_doctor import paths, telemetry
 from prowlr_doctor.scanner import load_snapshot, run_audit
 from prowlr_doctor.recommender import recommend
 from prowlr_doctor.patch_planner import build_plan, apply_plan
@@ -27,9 +27,29 @@ from prowlr_doctor.reporter import render
 @click.option("--diff", is_flag=True, help="Show settings.json diff from plan on disk.")
 @click.option("--apply", is_flag=True, help="Apply plan at ~/.claude/doctor-plan.json.")
 @click.option("--no-tui", is_flag=True, help="Rich report only (no Textual app).")
+@click.option("--opt-in-telemetry", is_flag=True, help="Opt in to anonymous aggregate telemetry.")
+@click.option("--opt-out-telemetry", is_flag=True, help="Opt out of telemetry.")
 @click.version_option(package_name="prowlr-doctor")
-def main(profile: str, as_json: bool, write_plan: bool, diff: bool, apply: bool, no_tui: bool) -> None:
+def main(
+    profile: str,
+    as_json: bool,
+    write_plan: bool,
+    diff: bool,
+    apply: bool,
+    no_tui: bool,
+    opt_in_telemetry: bool,
+    opt_out_telemetry: bool,
+) -> None:
     """Audit your Claude Code environment for token waste and security issues."""
+    if opt_in_telemetry:
+        telemetry.opt_in()
+        click.echo("Telemetry enabled. Thank you — your aggregate data helps improve ProwlrDoctor.")
+        click.echo("No PII is collected. No file paths, no plugin names, counts only.")
+        return
+    if opt_out_telemetry:
+        telemetry.opt_out()
+        click.echo("Telemetry disabled.")
+        return
 
     if apply:
         _cmd_apply()
@@ -42,6 +62,7 @@ def main(profile: str, as_json: bool, write_plan: bool, diff: bool, apply: bool,
     env = load_snapshot()
     findings, budget = run_audit(env)
     rec = recommend(findings, profile)
+    telemetry.maybe_send(env, findings, budget, profile)
 
     if as_json or write_plan:
         plan = build_plan(env, rec)

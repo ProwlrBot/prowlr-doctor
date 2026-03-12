@@ -8,8 +8,8 @@ from prowlr_doctor.auditors.base import BaseAuditor
 from prowlr_doctor.models import EnvironmentSnapshot, Finding, Severity
 
 _WELL_KNOWN = {
-    "jcodemunch", "serena", "context7", "playwright", "figma",
-    "github", "filesystem", "memory", "fetch",
+    "jcodemunch", "jdocmunch", "serena", "context7", "playwright", "figma",
+    "github", "filesystem", "memory", "fetch", "notion",
 }
 
 

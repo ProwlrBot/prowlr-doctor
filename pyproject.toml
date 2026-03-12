@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "prowlr-doctor"
+version = "0.1.0"
+description = "Security-aware agent environment auditor with token cost intelligence for Claude Code"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.0",
+    "rich>=13.0",
+    "tiktoken>=0.5",
+]
+
+[project.optional-dependencies]
+tui = ["textual>=0.60"]
+telemetry = ["httpx>=0.27"]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.23",
+    "textual[dev]>=0.60",
+]
+
+[project.scripts]
+prowlr-doctor = "prowlr_doctor.cli:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/prowlr_doctor"]

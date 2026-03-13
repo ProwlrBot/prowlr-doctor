@@ -15,6 +15,24 @@ from prowlr_doctor.auditors.memory import MemoryAuditor
 from prowlr_doctor.auditors.security import SecurityAuditor
 
 
+def _latest_version_dir(base: Path) -> Path:
+    """Return the highest-versioned subdirectory of base, or base itself."""
+    try:
+        subdirs = [d for d in base.iterdir() if d.is_dir()]
+    except OSError:
+        return base
+    if not subdirs:
+        return base
+    # Sort by version tuple if parseable, else lexicographically
+    def version_key(d: Path):
+        try:
+            return tuple(int(x) for x in d.name.split("."))
+        except ValueError:
+            return (0,)
+    versioned = sorted(subdirs, key=version_key, reverse=True)
+    return versioned[0]
+
+
 def load_snapshot(cwd: Path | None = None) -> EnvironmentSnapshot:
     """Parse ~/.claude/settings.json and surrounding environment into a snapshot."""
     sp = paths.settings_path()
@@ -33,16 +51,21 @@ def load_snapshot(cwd: Path | None = None) -> EnvironmentSnapshot:
     installed_plugin_dirs: dict[str, Path] = {}
     if cache_dir.exists():
         for plugin_id in enabled_plugins:
-            # plugin cache dirs are typically named by plugin_id with @ replaced by /
-            candidate = cache_dir / plugin_id.replace("@", "/")
-            if candidate.exists():
-                installed_plugin_dirs[plugin_id] = candidate
+            # Cache layout: registry/name/version/  (e.g. claude-plugins-official/hookify/5.0.2/)
+            # Plugin IDs are name@registry  (e.g. hookify@claude-plugins-official)
+            if "@" in plugin_id:
+                name, registry = plugin_id.split("@", 1)
+                base = cache_dir / registry / name
             else:
-                # flat layout: just the plugin name before @
-                name = plugin_id.split("@")[0]
-                flat = cache_dir / name
+                base = cache_dir / plugin_id
+            if base.exists():
+                # Resolve latest version subdirectory if present
+                installed_plugin_dirs[plugin_id] = _latest_version_dir(base)
+            else:
+                # flat layout fallback: just the name part
+                flat = cache_dir / plugin_id.split("@")[0]
                 if flat.exists():
-                    installed_plugin_dirs[plugin_id] = flat
+                    installed_plugin_dirs[plugin_id] = _latest_version_dir(flat)
 
     return EnvironmentSnapshot(
         settings_path=sp,

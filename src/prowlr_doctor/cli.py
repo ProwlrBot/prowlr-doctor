@@ -152,10 +152,10 @@ def _cmd_diff() -> None:
     before = json.dumps(data["settings_diff"]["before"], indent=2).splitlines()
     after = json.dumps(data["settings_diff"]["after"], indent=2).splitlines()
     import difflib
-    from rich.console import Console
     from rich.syntax import Syntax
+    from prowlr_doctor.reporter import _make_console
     diff = "\n".join(difflib.unified_diff(before, after, fromfile="before", tofile="after", lineterm=""))
-    Console().print(Syntax(diff, "diff", theme="monokai"))
+    _make_console().print(Syntax(diff, "diff", theme="monokai"))
 
 
 def _build_json_output(env, findings, budget, rec, plan) -> dict:

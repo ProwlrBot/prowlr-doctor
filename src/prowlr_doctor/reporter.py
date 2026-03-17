@@ -1,6 +1,9 @@
 """Rich terminal report renderer (--no-tui mode)."""
 from __future__ import annotations
 
+import io
+import sys
+
 from rich.console import Console
 from rich.rule import Rule
 from rich.table import Table
@@ -8,6 +11,23 @@ from rich import box
 
 from prowlr_doctor.models import Finding, Recommendations, Severity, TokenBudget
 from prowlr_doctor import tokens
+
+
+def _make_console() -> Console:
+    """Create a Console that works on Windows without Unicode errors.
+
+    The legacy Windows renderer (used when the console doesn't advertise
+    VT support) encodes through the active code-page (often cp1252) which
+    chokes on characters like ✓ and ◆.  Wrapping stdout in a UTF-8
+    ``TextIOWrapper`` lets Rich bypass the legacy path.
+    """
+    if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
+        try:
+            wrapped = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+            return Console(file=wrapped)
+        except Exception:
+            pass
+    return Console()
 
 _SEVERITY_STYLE = {
     Severity.CRITICAL: "[bold red]● CRITICAL[/]",
@@ -30,7 +50,7 @@ def render(
     rec: Recommendations,
     console: Console | None = None,
 ) -> None:
-    con = console or Console()
+    con = console or _make_console()
 
     con.print()
     con.print(Rule("[bold cyan]ProwlrDoctor v0.1[/bold cyan]"))
